@@ -1,12 +1,12 @@
-name: app
-description: "A new Flutter project."
+name: business_record_management
+description: "A modern business record management application with beautiful UI"
 
 publish_to: 'none' 
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:

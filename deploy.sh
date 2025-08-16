@@ -21,6 +21,10 @@ flutter --version
 echo "🌐 Enabling web support..."
 flutter config --enable-web
 
+# Clean previous builds
+echo "🧹 Cleaning previous builds..."
+flutter clean
+
 # Get dependencies
 echo "📦 Getting dependencies..."
 flutter pub get
