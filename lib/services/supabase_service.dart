@@ -1,5 +1,6 @@
+// services/supabase_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user.dart';
+import '../models/user.dart' as app_models;
 import '../models/customer.dart';
 import '../models/invoice.dart';
 import '../models/transaction.dart';
@@ -16,33 +17,42 @@ class SupabaseService {
     required String email,
     required String password,
   }) async {
-    return await client.auth.signUp(
-      email: email,
-      password: password,
-    );
+    final response = await client.auth.signUp(email: email, password: password);
+    try {
+      await _ensureUserRecord();
+    } catch (e) {
+      print('[signUp] ensureUserRecord error: ' + e.toString());
+    }
+    return response;
   }
 
   Future<AuthResponse> signIn({
     required String email,
     required String password,
   }) async {
-    return await client.auth.signInWithPassword(
+    final response = await client.auth.signInWithPassword(
       email: email,
       password: password,
     );
+    try {
+      await _ensureUserRecord();
+    } catch (e) {
+      print('[signIn] ensureUserRecord error: ' + e.toString());
+    }
+    return response;
   }
 
   Future<void> signOut() async {
     await client.auth.signOut();
   }
 
-  User? get currentUser {
+  app_models.User? get currentUser {
     final user = client.auth.currentUser;
     if (user == null) return null;
-    return User(
+    return app_models.User(
       id: user.id,
       email: user.email ?? '',
-      createdAt: user.createdAt,
+      createdAt: DateTime.parse(user.createdAt),
     );
   }
 
@@ -60,13 +70,49 @@ class SupabaseService {
   }
 
   Future<Customer> createCustomer(Customer customer) async {
-    final response = await client
-        .from('customers')
-        .insert(customer.toJson())
-        .select()
-        .single();
+    // Safety: ensure a corresponding row exists in users table for FK
+    try {
+      await _ensureUserRecord();
+    } catch (e) {
+      print('[createCustomer] ensureUserRecord error: ' + e.toString());
+    }
+    final Map<String, dynamic> insertData = {
+      'user_id': customer.userId,
+      'name': customer.name,
+      if (customer.amount != null) 'amount': customer.amount,
+      if (customer.description != null) 'description': customer.description,
+      'repeat': customer.repeat,
+      'start_date': customer.startDate.toIso8601String(),
+      'end_date': customer.endDate.toIso8601String(),
+    };
 
-    return Customer.fromJson(response);
+    try {
+      print('[createCustomer] insert payload: ' + insertData.toString());
+      final response = await client
+          .from('customers')
+          .insert(insertData)
+          .select()
+          .single();
+      print('[createCustomer] response: ' + response.toString());
+      return Customer.fromJson(response);
+    } catch (e, st) {
+      print('[createCustomer] error: ' + e.toString());
+      print(st);
+      rethrow;
+    }
+  }
+
+  Future<void> _ensureUserRecord() async {
+    final authUser = client.auth.currentUser;
+    if (authUser == null) return;
+    final payload = {'id': authUser.id, 'email': authUser.email};
+    try {
+      print('[ensureUserRecord] upsert payload: ' + payload.toString());
+      await client.from('users').upsert(payload, onConflict: 'id');
+    } catch (e) {
+      print('[ensureUserRecord] upsert error: ' + e.toString());
+      rethrow;
+    }
   }
 
   Future<Customer> updateCustomer(Customer customer) async {
@@ -90,7 +136,10 @@ class SupabaseService {
         .stream(primaryKey: ['id'])
         .eq('user_id', currentUser!.id)
         .order('created_at', ascending: false)
-        .map((response) => response.map((json) => Customer.fromJson(json)).toList());
+        .map(
+          (response) =>
+              response.map((json) => Customer.fromJson(json)).toList(),
+        );
   }
 
   // Invoice methods
@@ -105,13 +154,29 @@ class SupabaseService {
   }
 
   Future<Invoice> createInvoice(Invoice invoice) async {
-    final response = await client
-        .from('invoices')
-        .insert(invoice.toJson())
-        .select()
-        .single();
+    final Map<String, dynamic> insertData = {
+      'customer_id': invoice.customerId,
+      'due_date': invoice.dueDate.toIso8601String(),
+      'amount': invoice.amount,
+      'status': invoice.status.toString().split('.').last,
+      'paid_amount': invoice.paidAmount,
+      if (invoice.description != null) 'description': invoice.description,
+    };
 
-    return Invoice.fromJson(response);
+    try {
+      print('[createInvoice] insert payload: ' + insertData.toString());
+      final response = await client
+          .from('invoices')
+          .insert(insertData)
+          .select()
+          .single();
+      print('[createInvoice] response: ' + response.toString());
+      return Invoice.fromJson(response);
+    } catch (e, st) {
+      print('[createInvoice] error: ' + e.toString());
+      print(st);
+      rethrow;
+    }
   }
 
   Future<Invoice> updateInvoice(Invoice invoice) async {
@@ -135,7 +200,9 @@ class SupabaseService {
         .stream(primaryKey: ['id'])
         .eq('customer_id', customerId)
         .order('due_date', ascending: true)
-        .map((response) => response.map((json) => Invoice.fromJson(json)).toList());
+        .map(
+          (response) => response.map((json) => Invoice.fromJson(json)).toList(),
+        );
   }
 
   // Transaction methods
@@ -146,17 +213,33 @@ class SupabaseService {
         .eq('invoice_id', invoiceId)
         .order('payment_date', ascending: false);
 
-    return (response as List).map((json) => Transaction.fromJson(json)).toList();
+    return (response as List)
+        .map((json) => Transaction.fromJson(json))
+        .toList();
   }
 
   Future<Transaction> createTransaction(Transaction transaction) async {
-    final response = await client
-        .from('transactions')
-        .insert(transaction.toJson())
-        .select()
-        .single();
+    final Map<String, dynamic> insertData = {
+      'invoice_id': transaction.invoiceId,
+      'amount': transaction.amount,
+      'payment_date': transaction.paymentDate.toIso8601String(),
+      'status': transaction.status.toString().split('.').last,
+    };
 
-    return Transaction.fromJson(response);
+    try {
+      print('[createTransaction] insert payload: ' + insertData.toString());
+      final response = await client
+          .from('transactions')
+          .insert(insertData)
+          .select()
+          .single();
+      print('[createTransaction] response: ' + response.toString());
+      return Transaction.fromJson(response);
+    } catch (e, st) {
+      print('[createTransaction] error: ' + e.toString());
+      print(st);
+      rethrow;
+    }
   }
 
   Future<Transaction> updateTransaction(Transaction transaction) async {
@@ -176,7 +259,10 @@ class SupabaseService {
         .stream(primaryKey: ['id'])
         .eq('invoice_id', invoiceId)
         .order('payment_date', ascending: false)
-        .map((response) => response.map((json) => Transaction.fromJson(json)).toList());
+        .map(
+          (response) =>
+              response.map((json) => Transaction.fromJson(json)).toList(),
+        );
   }
 
   // Dashboard calculations
@@ -216,21 +302,43 @@ class SupabaseService {
   }
 
   Future<List<Customer>> getOverdueCustomers() async {
-    final response = await client
-        .from('customers')
-        .select('''
-          *,
-          invoices!inner(
-            id,
-            due_date,
-            amount,
-            paid_amount
-          )
-        ''')
-        .eq('user_id', currentUser!.id)
-        .lt('invoices.due_date', DateTime.now().toIso8601String())
-        .lt('invoices.amount', 'invoices.paid_amount');
+    final nowIso = DateTime.now().toIso8601String();
 
-    return (response as List).map((json) => Customer.fromJson(json)).toList();
+    // Step 1: Find customer_ids that have at least one overdue invoice with remaining > 0
+    final invoices = await client
+        .from('invoices')
+        .select('customer_id, amount, paid_amount, due_date')
+        .lt('due_date', nowIso);
+
+    final Set<String> overdueCustomerIds = {};
+    for (final invoice in invoices as List) {
+      final dynamic amountRaw = invoice['amount'];
+      final dynamic paidRaw = invoice['paid_amount'];
+      final double amount = amountRaw is num
+          ? amountRaw.toDouble()
+          : (amountRaw is String ? double.tryParse(amountRaw) ?? 0 : 0);
+      final double paid = paidRaw is num
+          ? paidRaw.toDouble()
+          : (paidRaw is String ? double.tryParse(paidRaw) ?? 0 : 0);
+      if (amount - paid > 0) {
+        overdueCustomerIds.add(invoice['customer_id'] as String);
+      }
+    }
+
+    if (overdueCustomerIds.isEmpty) {
+      return [];
+    }
+
+    // Step 2: Fetch those customers for the current user
+    final customersResponse = await client
+        .from('customers')
+        .select()
+        .eq('user_id', currentUser!.id)
+        .inFilter('id', overdueCustomerIds.toList())
+        .order('created_at', ascending: false);
+
+    return (customersResponse as List)
+        .map((json) => Customer.fromJson(json))
+        .toList();
   }
 }

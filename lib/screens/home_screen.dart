@@ -1,3 +1,4 @@
+// screens/home_screen.dart
 import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../services/supabase_service.dart';
@@ -18,6 +19,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   CustomerFilter _currentFilter = CustomerFilter.all;
+  // Cached datasets
+  List<Customer> _allCustomers = [];
+  List<Customer> _overdueCustomers = [];
+
+  // Currently active working set (source for filtering)
   List<Customer> _customers = [];
   List<Customer> _filteredCustomers = [];
   double _amountReceived = 0;
@@ -38,11 +44,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setupStreams() {
-    SupabaseService().streamCustomers().listen((customers) {
-      setState(() {
-        _customers = customers;
-        _filterCustomers();
-      });
+    SupabaseService().streamCustomers().listen((customers) async {
+      // Always keep full cache updated
+      _allCustomers = customers;
+
+      // Only update the visible list when viewing "All"
+      if (_currentFilter == CustomerFilter.all) {
+        if (!mounted) return;
+        setState(() {
+          _customers = _allCustomers;
+          _filterCustomers();
+        });
+      }
     });
   }
 
@@ -52,16 +65,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final futures = await Future.wait([
+      final results = await Future.wait([
         SupabaseService().getAmountReceivedThisMonth(),
         SupabaseService().getAmountDue(),
         SupabaseService().getCustomers(),
       ]);
 
+      final double amountReceived = results[0] as double;
+      final double amountDue = results[1] as double;
+      final List<Customer> customers = results[2] as List<Customer>;
+
       setState(() {
-        _amountReceived = futures[0];
-        _amountDue = futures[1];
-        _customers = futures[2];
+        _amountReceived = amountReceived;
+        _amountDue = amountDue;
+        _allCustomers = customers;
+        _customers = _allCustomers;
         _filterCustomers();
         _isLoading = false;
       });
@@ -82,16 +100,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _filterCustomers() {
     String searchQuery = _searchController.text.toLowerCase();
-    
+
     List<Customer> filtered = _customers.where((customer) {
       bool matchesSearch = customer.name.toLowerCase().contains(searchQuery);
-      
+
       if (_currentFilter == CustomerFilter.overdue) {
         // For overdue filter, we need to check if customer has overdue invoices
         // This is a simplified check - in a real app, you'd want to join with invoices
         return matchesSearch;
       }
-      
+
       return matchesSearch;
     }).toList();
 
@@ -108,7 +126,41 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentFilter = filter;
     });
-    _filterCustomers();
+    if (filter == CustomerFilter.overdue) {
+      if (_overdueCustomers.isEmpty) {
+        _refreshOverdue();
+      } else {
+        setState(() {
+          _customers = _overdueCustomers;
+          _filterCustomers();
+        });
+      }
+    } else {
+      setState(() {
+        _customers = _allCustomers;
+        _filterCustomers();
+      });
+    }
+  }
+
+  Future<void> _refreshOverdue() async {
+    try {
+      final overdue = await SupabaseService().getOverdueCustomers();
+      if (!mounted) return;
+      setState(() {
+        _overdueCustomers = overdue;
+        _customers = _overdueCustomers;
+        _filterCustomers();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading overdue customers: ' + e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _showAddCustomerModal() async {
@@ -118,6 +170,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (result != null && mounted) {
+      // Optimistic update so UI reflects immediately even if realtime stream is not active
+      setState(() {
+        _allCustomers = [
+          result,
+          ..._allCustomers.where((c) => c.id != result.id),
+        ];
+        if (_currentFilter == CustomerFilter.all) {
+          _customers = _allCustomers;
+        }
+        _filterCustomers();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Customer added successfully!'),
@@ -132,7 +195,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Customer'),
-        content: Text('Are you sure you want to delete ${customer.name}? This will also delete all related invoices and transactions.'),
+        content: Text(
+          'Are you sure you want to delete ${customer.name}? This will also delete all related invoices and transactions.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -215,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -233,9 +298,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Filter Tabs
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -259,9 +324,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Customer List
                 Expanded(
                   child: _filteredCustomers.isEmpty
@@ -276,18 +341,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                _customers.isEmpty ? 'No customers yet' : 'No customers found',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                                _customers.isEmpty
+                                    ? 'No customers yet'
+                                    : 'No customers found',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(color: Colors.grey[600]),
                               ),
                               if (_customers.isEmpty) ...[
                                 const SizedBox(height: 8),
                                 Text(
                                   'Tap the + button to add your first customer',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[500],
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(color: Colors.grey[500]),
                                 ),
                               ],
                             ],
@@ -326,7 +391,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDashboardCard(String title, String amount, IconData icon, Color color) {
+  Widget _buildDashboardCard(
+    String title,
+    String amount,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -342,9 +412,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleSmall?.copyWith(color: Colors.grey[600]),
                   ),
                 ),
               ],
@@ -368,11 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
       ),
       selected: isSelected,
       onSelected: (_) => _onFilterChanged(filter),
