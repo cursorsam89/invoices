@@ -1,7 +1,8 @@
 {
     "name": "Business Record Management",
     "short_name": "Business Records",
-    "start_url": ".",
+    "start_url": "/invoices/",
+    "scope": "/invoices/",
     "display": "standalone",
     "background_color": "#6366F1",
     "theme_color": "#6366F1",
