@@ -10,13 +10,26 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: "assets/.env");
+  } catch (_) {
+    // Fallback to dart-define if .env is not bundled
+  }
 
   // Initialize Supabase
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
+  final supabaseUrl =
+      dotenv.env['SUPABASE_URL'] ??
+      const String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+  final supabaseAnon =
+      dotenv.env['SUPABASE_ANON_KEY'] ??
+      const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+
+  if (supabaseUrl.isEmpty || supabaseAnon.isEmpty) {
+    runApp(const MissingEnvApp());
+    return;
+  }
+
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
 
   runApp(const MyApp());
 }
@@ -34,7 +47,7 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        
+
         // Enhanced AppBar theme
         appBarTheme: const AppBarTheme(
           centerTitle: true,
@@ -47,7 +60,7 @@ class MyApp extends StatelessWidget {
             color: Color(0xFF1F2937),
           ),
         ),
-        
+
         // Enhanced Card theme
         cardTheme: CardThemeData(
           elevation: 4,
@@ -57,7 +70,7 @@ class MyApp extends StatelessWidget {
           ),
           color: Colors.white,
         ),
-        
+
         // Enhanced Button themes
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -75,7 +88,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        
+
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF6366F1),
@@ -90,7 +103,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // Enhanced Input decoration theme
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -115,16 +128,10 @@ class MyApp extends StatelessWidget {
             horizontal: 16,
             vertical: 16,
           ),
-          labelStyle: const TextStyle(
-            color: Color(0xFF6B7280),
-            fontSize: 16,
-          ),
-          hintStyle: const TextStyle(
-            color: Color(0xFF9CA3AF),
-            fontSize: 16,
-          ),
+          labelStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 16),
+          hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
         ),
-        
+
         // Enhanced Text theme
         textTheme: const TextTheme(
           headlineLarge: TextStyle(
@@ -152,16 +159,10 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.w500,
             color: Color(0xFF374151),
           ),
-          bodyLarge: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF374151),
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B7280),
-          ),
+          bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF374151)),
+          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
-        
+
         // Enhanced Floating Action Button theme
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFF6366F1),
@@ -173,6 +174,39 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const AuthWrapper(),
+    );
+  }
+}
+
+class MissingEnvApp extends StatelessWidget {
+  const MissingEnvApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: const [
+                Text(
+                  'Configuration missing',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'SUPABASE_URL and/or SUPABASE_ANON_KEY were not provided.\n'
+                  'Provide them via assets/.env or --dart-define at build time.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

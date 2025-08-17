@@ -41,7 +41,8 @@ The easiest way to deploy your app is using GitHub Pages with the included GitHu
 
 1. **Build the app locally:**
    ```bash
-   flutter build web --release
+   flutter build web --release --base-href="/invoices/" --pwa-strategy=none \
+   --dart-define=SUPABASE_URL=YOUR_URL --dart-define=SUPABASE_ANON_KEY=YOUR_KEY
    ```
 
 2. **Deploy to Netlify:**
@@ -63,7 +64,8 @@ The easiest way to deploy your app is using GitHub Pages with the included GitHu
 
 2. **Build and deploy:**
    ```bash
-   flutter build web --release
+   flutter build web --release --base-href="/invoices/" --pwa-strategy=none \
+   --dart-define=SUPABASE_URL=YOUR_URL --dart-define=SUPABASE_ANON_KEY=YOUR_KEY
    cd build/web
    vercel --prod
    ```
