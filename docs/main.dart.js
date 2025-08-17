@@ -6997,9 +6997,9 @@ break
 case 3:s=2
 break
 case 6:m=$.ax7().gW8().h(0,"SUPABASE_URL")
-if(m==null)m=""
+if(m==null)m="https://hkkcczhaiofqtgdfmaba.supabase.co"
 l=$.ax7().gW8().h(0,"SUPABASE_ANON_KEY")
-if(l==null)l=""
+if(l==null)l="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhra2NjemhhaW9mcXRnZGZtYWJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxOTQ0MjYsImV4cCI6MjA3MDc3MDQyNn0.okow1NSDIKjlhNkxzpjdf9yvfq_MRGF53cZUn9r_YCk"
 if(m.length===0||l.length===0){if($.a2==null)A.Q2()
 k=$.a2
 A.aGD(k.ZF(B.NX),k,"runApp")
