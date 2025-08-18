@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/auth_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/root_screen.dart';
 import 'services/supabase_service.dart';
 import 'package:provider/provider.dart';
 import 'state/app_state.dart';
@@ -229,7 +229,7 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.hasData) {
           final session = snapshot.data!.session;
           if (session != null) {
-            return const HomeScreen();
+            return const RootScreen();
           }
         }
         return const AuthScreen();
