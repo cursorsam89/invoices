@@ -1,6 +1,10 @@
+// widgets/customer_card.dart
 import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../utils/date_formatter.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
+import '../models/overdue_summary.dart';
 
 class CustomerCard extends StatelessWidget {
   final Customer customer;
@@ -18,6 +22,10 @@ class CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, OverdueSummary> overdueMap = context
+        .watch<AppState>()
+        .overdueByCustomer;
+    final OverdueSummary? summary = overdueMap[customer.id];
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -37,20 +45,20 @@ class CustomerCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 // Customer Avatar
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF6366F1).withOpacity(0.3),
@@ -61,7 +69,9 @@ class CustomerCard extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
+                      customer.name.isNotEmpty
+                          ? customer.name[0].toUpperCase()
+                          : '?',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -70,9 +80,9 @@ class CustomerCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-                const SizedBox(width: 16),
-                
+
+                const SizedBox(width: 12),
+
                 // Customer Details
                 Expanded(
                   child: Column(
@@ -86,11 +96,14 @@ class CustomerCard extends StatelessWidget {
                           color: Color(0xFF1F2937),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF10B981).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -105,7 +118,9 @@ class CustomerCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  DateFormatter.formatDisplayDate(customer.startDate),
+                                  DateFormatter.formatDisplayDate(
+                                    customer.startDate,
+                                  ),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -117,41 +132,10 @@ class CustomerCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (customer.amount != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.attach_money,
-                                    size: 12,
-                                    color: Color(0xFF6366F1),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    DateFormatter.formatCurrency(customer.amount!),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF6366F1),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      if (customer.description != null && customer.description!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                      // amount chip removed for compact layout
+                      if (customer.description != null &&
+                          customer.description!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
                         Text(
                           customer.description!,
                           style: const TextStyle(
@@ -163,52 +147,112 @@ class CustomerCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      if (summary != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFEF4444,
+                                ).withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 12,
+                                    color: Color(0xFFEF4444),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Overdue: ' +
+                                        DateFormatter.formatCurrency(
+                                          summary.totalOverdueAmount,
+                                        ),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFEDD5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.timer_outlined,
+                                    size: 12,
+                                    color: Color(0xFFFB923C),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    summary.totalOverdueDays.toString() +
+                                        ' days',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFB923C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                
-                // Action Buttons
-                Column(
+
+                // Compact action buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Color(0xFF6366F1),
                       ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.edit,
-                          size: 18,
-                          color: Color(0xFF6366F1),
-                        ),
-                        onPressed: onEdit,
-                        tooltip: 'Edit Customer',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
+                      onPressed: onEdit,
+                      tooltip: 'Edit Customer',
+                      padding: const EdgeInsets.all(6),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete,
+                        size: 18,
+                        color: Color(0xFFEF4444),
                       ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          size: 18,
-                          color: Color(0xFFEF4444),
-                        ),
-                        onPressed: onDelete,
-                        tooltip: 'Delete Customer',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
+                      onPressed: onDelete,
+                      tooltip: 'Delete Customer',
+                      padding: const EdgeInsets.all(6),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
                       ),
                     ),
                   ],

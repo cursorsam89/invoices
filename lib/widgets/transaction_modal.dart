@@ -6,6 +6,8 @@ import '../models/invoice.dart';
 import '../models/transaction.dart';
 import '../services/supabase_service.dart';
 import '../utils/date_formatter.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class TransactionModal extends StatefulWidget {
   final Invoice invoice;
@@ -111,10 +113,15 @@ class _TransactionModalState extends State<TransactionModal> {
         transaction,
       );
 
-      // Update invoice paid amount
+      // Update invoice paid and potentially increase invoice amount if exceeded
+      final double newPaid = widget.invoice.paidAmount + amount;
+      final double newAmountTotal = newPaid > widget.invoice.amount
+          ? newPaid
+          : widget.invoice.amount;
       final updatedInvoice = widget.invoice.copyWith(
-        paidAmount: widget.invoice.paidAmount + amount,
-        status: (widget.invoice.paidAmount + amount) >= widget.invoice.amount
+        paidAmount: newPaid,
+        amount: newAmountTotal,
+        status: newPaid >= newAmountTotal
             ? InvoiceStatus.paid
             : widget.invoice.status,
       );
@@ -126,7 +133,11 @@ class _TransactionModalState extends State<TransactionModal> {
         _transactions = [savedTransaction, ..._transactions];
       });
 
+      // Force invoice recalculation so listeners get fresh data immediately
+      await SupabaseService().recalcInvoiceFromTransactions(widget.invoice.id);
+
       if (mounted) {
+        Provider.of<AppState>(context, listen: false).recomputeTotals();
         Navigator.of(context).pop(savedTransaction);
       }
     } catch (e) {
@@ -183,8 +194,13 @@ class _TransactionModalState extends State<TransactionModal> {
           status: InvoiceStatus.pending,
         );
         await SupabaseService().updateInvoice(updatedInvoice);
+        // Force invoice recalculation
+        await SupabaseService().recalcInvoiceFromTransactions(
+          widget.invoice.id,
+        );
 
         if (mounted) {
+          Provider.of<AppState>(context, listen: false).recomputeTotals();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Transaction cancelled successfully!'),

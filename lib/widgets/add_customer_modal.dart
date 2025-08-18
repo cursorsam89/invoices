@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../models/customer.dart';
 import '../models/invoice.dart';
 import '../services/supabase_service.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class AddCustomerModal extends StatefulWidget {
   const AddCustomerModal({super.key});
@@ -105,6 +107,9 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
       }
 
       if (mounted) {
+        final appState = Provider.of<AppState>(context, listen: false);
+        appState.onCustomerAdded(savedCustomer);
+        await appState.recomputeTotals();
         Navigator.of(context).pop(savedCustomer);
       }
     } catch (e, st) {

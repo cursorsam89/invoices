@@ -4,6 +4,7 @@ import '../models/user.dart' as app_models;
 import '../models/customer.dart';
 import '../models/invoice.dart';
 import '../models/transaction.dart';
+import '../models/overdue_summary.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -126,6 +127,138 @@ class SupabaseService {
     return Customer.fromJson(response);
   }
 
+  /// Regenerate or adjust invoices when a customer's schedule/amount changes.
+  ///
+  /// Rules:
+  /// - If no invoices have payments yet (paid_amount == 0 for all), delete and fully regenerate.
+  /// - If some invoices have payments, keep those; delete unpaid ones and create
+  ///   new invoices to reach the new repeat count. New invoices use the new
+  ///   start date cadence and current amount/description.
+  /// - If amount is null or <= 0, delete unpaid invoices and do not create new ones.
+  Future<void> regenerateInvoicesForCustomer(Customer customer) async {
+    // Fetch existing invoices
+    final existing = await getInvoicesByCustomer(customer.id);
+
+    // If amount is not set, remove all unpaid invoices and stop
+    final bool hasValidAmount = (customer.amount ?? 0) > 0;
+
+    // Helpers
+    Future<void> _deleteInvoices(List<Invoice> invoices) async {
+      for (final inv in invoices) {
+        await deleteInvoice(inv.id);
+      }
+    }
+
+    Future<void> _updateInvoiceFields(Invoice invoice, DateTime dueDate) async {
+      final updated = invoice.copyWith(
+        dueDate: dueDate,
+        amount: customer.amount ?? invoice.amount,
+        description: customer.description,
+        status: InvoiceStatus.pending,
+      );
+      await updateInvoice(updated);
+    }
+
+    List<DateTime> _buildDueDates() {
+      final List<DateTime> dueDates = [];
+      for (int i = 0; i < customer.repeat; i++) {
+        dueDates.add(
+          DateTime(
+            customer.startDate.year,
+            customer.startDate.month + i,
+            customer.startDate.day,
+          ),
+        );
+      }
+      return dueDates;
+    }
+
+    if (!hasValidAmount) {
+      // Remove all unpaid invoices
+      final unpaid = existing.where((e) => (e.paidAmount <= 0)).toList();
+      await _deleteInvoices(unpaid);
+      return;
+    }
+
+    // Sort existing by due date to align with schedule
+    existing.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final targetDueDates = _buildDueDates();
+
+    final paid = existing.where((e) => e.paidAmount > 0).toList()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final unpaid = existing.where((e) => e.paidAmount <= 0).toList()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+    if (paid.isEmpty) {
+      // Align all existing unpaid to the target schedule by updating in place
+      final int common = existing.length < targetDueDates.length
+          ? existing.length
+          : targetDueDates.length;
+      for (int i = 0; i < common; i++) {
+        await _updateInvoiceFields(existing[i], targetDueDates[i]);
+      }
+      // If we have more existing than target, delete the extras
+      if (existing.length > targetDueDates.length) {
+        final extra = existing.sublist(targetDueDates.length);
+        await _deleteInvoices(extra);
+      }
+      // If we need more, create the remainder
+      if (targetDueDates.length > existing.length) {
+        final toCreate = targetDueDates.sublist(existing.length);
+        for (final due in toCreate) {
+          final invoice = Invoice(
+            id: '',
+            customerId: customer.id,
+            dueDate: due,
+            amount: customer.amount!,
+            status: InvoiceStatus.pending,
+            paidAmount: 0,
+            description: customer.description,
+            createdAt: DateTime.now(),
+          );
+          await createInvoice(invoice);
+        }
+      }
+      return;
+    }
+
+    // Mixed case: keep paid invoices as-is; align unpaid ones after paid slots
+    final int startIndex = paid.length;
+    final remainingTargets = targetDueDates.skip(startIndex).toList();
+
+    // Update unpaid invoices to match remaining schedule
+    final int commonUnpaid = unpaid.length < remainingTargets.length
+        ? unpaid.length
+        : remainingTargets.length;
+    for (int i = 0; i < commonUnpaid; i++) {
+      await _updateInvoiceFields(unpaid[i], remainingTargets[i]);
+    }
+
+    // Delete extra unpaid invoices if fewer are needed
+    if (unpaid.length > remainingTargets.length) {
+      final extra = unpaid.sublist(remainingTargets.length);
+      await _deleteInvoices(extra);
+    }
+
+    // Create additional invoices if more are needed
+    if (remainingTargets.length > unpaid.length) {
+      final toCreate = remainingTargets.sublist(unpaid.length);
+      for (final due in toCreate) {
+        final invoice = Invoice(
+          id: '',
+          customerId: customer.id,
+          dueDate: due,
+          amount: customer.amount!,
+          status: InvoiceStatus.pending,
+          paidAmount: 0,
+          description: customer.description,
+          createdAt: DateTime.now(),
+        );
+        await createInvoice(invoice);
+      }
+    }
+  }
+
   Future<void> deleteCustomer(String customerId) async {
     await client.from('customers').delete().eq('id', customerId);
   }
@@ -188,6 +321,40 @@ class SupabaseService {
         .single();
 
     return Invoice.fromJson(response);
+  }
+
+  /// Recalculate an invoice's paid amount from active transactions and update it.
+  Future<Invoice> recalcInvoiceFromTransactions(String invoiceId) async {
+    // Fetch current invoice
+    final invoiceResp = await client
+        .from('invoices')
+        .select()
+        .eq('id', invoiceId)
+        .single();
+    final current = Invoice.fromJson(invoiceResp);
+
+    // Sum active transactions
+    final txs = await client
+        .from('transactions')
+        .select('amount, status')
+        .eq('invoice_id', invoiceId);
+    double paid = 0;
+    for (final t in txs as List) {
+      if ((t['status'] as String) == 'active') {
+        final dynamic amt = t['amount'];
+        paid += amt is num
+            ? amt.toDouble()
+            : double.tryParse(amt.toString()) ?? 0;
+      }
+    }
+
+    final double newTotal = paid > current.amount ? paid : current.amount;
+    final updated = current.copyWith(
+      paidAmount: paid,
+      amount: newTotal,
+      status: paid >= newTotal ? InvoiceStatus.paid : InvoiceStatus.pending,
+    );
+    return await updateInvoice(updated);
   }
 
   Future<void> deleteInvoice(String invoiceId) async {
@@ -268,19 +435,47 @@ class SupabaseService {
   // Dashboard calculations
   Future<double> getAmountReceivedThisMonth() async {
     final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    final String startDate =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
+    final DateTime nextMonthBase = now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+    final String nextMonthDate =
+        '${nextMonthBase.year.toString().padLeft(4, '0')}-${nextMonthBase.month.toString().padLeft(2, '0')}-${nextMonthBase.day.toString().padLeft(2, '0')}';
+
+    // Constrain to the current user's invoices explicitly to avoid any policy quirks
+    final customerIdsResp = await client
+        .from('customers')
+        .select('id')
+        .eq('user_id', currentUser!.id);
+    final customerIds = (customerIdsResp as List)
+        .map((e) => e['id'] as String)
+        .toList();
+    if (customerIds.isEmpty) return 0.0;
+
+    final invoiceIdsResp = await client
+        .from('invoices')
+        .select('id, customer_id')
+        .inFilter('customer_id', customerIds);
+    final invoiceIds = (invoiceIdsResp as List)
+        .map((e) => e['id'] as String)
+        .toList();
+    if (invoiceIds.isEmpty) return 0.0;
 
     final response = await client
         .from('transactions')
         .select('amount')
+        .inFilter('invoice_id', invoiceIds)
         .eq('status', 'active')
-        .gte('payment_date', startOfMonth.toIso8601String())
-        .lte('payment_date', endOfMonth.toIso8601String());
+        .gte('payment_date', startDate)
+        .lt('payment_date', nextMonthDate);
 
-    double total = 0;
-    for (var transaction in response) {
-      total += transaction['amount'];
+    double total = 0.0;
+    for (final tx in response as List) {
+      final dynamic amt = tx['amount'];
+      total += amt is num
+          ? amt.toDouble()
+          : double.tryParse(amt.toString()) ?? 0.0;
     }
     return total;
   }
@@ -340,5 +535,56 @@ class SupabaseService {
     return (customersResponse as List)
         .map((json) => Customer.fromJson(json))
         .toList();
+  }
+
+  Future<Map<String, OverdueSummary>> getOverdueSummaries() async {
+    // Fetch all customers for current user to scope invoice query
+    final customersResp = await client
+        .from('customers')
+        .select('id')
+        .eq('user_id', currentUser!.id);
+    final customerIds = (customersResp as List)
+        .map((e) => e['id'] as String)
+        .toList();
+    if (customerIds.isEmpty) return {};
+
+    // Fetch overdue invoices for these customers
+    final nowIso = DateTime.now().toIso8601String();
+    final invoicesResp = await client
+        .from('invoices')
+        .select('customer_id, amount, paid_amount, due_date')
+        .inFilter('customer_id', customerIds)
+        .lt('due_date', nowIso);
+
+    final Map<String, OverdueSummary> result = {};
+    for (final inv in invoicesResp as List) {
+      final String cid = inv['customer_id'] as String;
+      final dynamic amountRaw = inv['amount'];
+      final dynamic paidRaw = inv['paid_amount'];
+      final double amount = amountRaw is num
+          ? amountRaw.toDouble()
+          : (amountRaw is String ? double.tryParse(amountRaw) ?? 0 : 0);
+      final double paid = paidRaw is num
+          ? paidRaw.toDouble()
+          : (paidRaw is String ? double.tryParse(paidRaw) ?? 0 : 0);
+      final double remaining = amount - paid;
+      if (remaining <= 0) continue;
+      final int days = DateTime.now()
+          .difference(DateTime.parse(inv['due_date'] as String))
+          .inDays;
+      final prev = result[cid];
+      if (prev == null) {
+        result[cid] = OverdueSummary(
+          totalOverdueAmount: remaining,
+          totalOverdueDays: days > 0 ? days : 0,
+        );
+      } else {
+        result[cid] = OverdueSummary(
+          totalOverdueAmount: prev.totalOverdueAmount + remaining,
+          totalOverdueDays: prev.totalOverdueDays + (days > 0 ? days : 0),
+        );
+      }
+    }
+    return result;
   }
 }
