@@ -5,6 +5,8 @@ import '../models/customer.dart';
 import '../models/invoice.dart';
 import '../models/transaction.dart';
 import '../models/overdue_summary.dart';
+import '../models/book.dart';
+import '../models/cash_entry.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -68,6 +70,110 @@ class SupabaseService {
         .order('created_at', ascending: false);
 
     return (response as List).map((json) => Customer.fromJson(json)).toList();
+  }
+
+  // Cashbook methods
+  Future<List<Book>> getBooks() async {
+    final response = await client
+        .from('books')
+        .select()
+        .eq('user_id', currentUser!.id)
+        .order('created_at', ascending: false);
+    return (response as List).map((json) => Book.fromJson(json)).toList();
+  }
+
+  Stream<List<Book>> streamBooks() {
+    return client
+        .from('books')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', currentUser!.id)
+        .order('created_at', ascending: false)
+        .map(
+          (response) => response.map((json) => Book.fromJson(json)).toList(),
+        );
+  }
+
+  Future<Book> createBook(Book book) async {
+    // Safety: ensure a corresponding row exists in users table for FK and RLS alignment
+    try {
+      await _ensureUserRecord();
+    } catch (e) {
+      print('[createBook] ensureUserRecord error: ' + e.toString());
+    }
+    final insertData = {
+      'user_id': book.userId,
+      'name': book.name,
+      if (book.description != null) 'description': book.description,
+    };
+    print('[createBook] insert payload: ' + insertData.toString());
+    final response = await client
+        .from('books')
+        .insert(insertData)
+        .select()
+        .single();
+    return Book.fromJson(response);
+  }
+
+  Future<void> deleteBook(String bookId) async {
+    await client.from('books').delete().eq('id', bookId);
+  }
+
+  Future<Book> updateBook(Book book) async {
+    final updateData = <String, dynamic>{
+      'name': book.name,
+      'description': book.description,
+    };
+    final response = await client
+        .from('books')
+        .update(updateData)
+        .eq('id', book.id)
+        .select()
+        .maybeSingle();
+    if (response == null) {
+      throw Exception('Update failed: row not found or blocked by RLS');
+    }
+    return Book.fromJson(response);
+  }
+
+  Future<List<CashEntry>> getEntries(String bookId) async {
+    final response = await client
+        .from('cash_entries')
+        .select()
+        .eq('book_id', bookId)
+        .order('entry_date', ascending: false);
+    return (response as List).map((json) => CashEntry.fromJson(json)).toList();
+  }
+
+  Stream<List<CashEntry>> streamEntries(String bookId) {
+    return client
+        .from('cash_entries')
+        .stream(primaryKey: ['id'])
+        .eq('book_id', bookId)
+        .order('entry_date', ascending: false)
+        .map(
+          (response) =>
+              response.map((json) => CashEntry.fromJson(json)).toList(),
+        );
+  }
+
+  Future<CashEntry> createEntry(CashEntry entry) async {
+    final insertData = {
+      'book_id': entry.bookId,
+      'type': entry.type == CashEntryType.inFlow ? 'in' : 'out',
+      'amount': entry.amount,
+      if (entry.note != null) 'note': entry.note,
+      'entry_date': entry.entryDate.toIso8601String(),
+    };
+    final response = await client
+        .from('cash_entries')
+        .insert(insertData)
+        .select()
+        .single();
+    return CashEntry.fromJson(response);
+  }
+
+  Future<void> deleteEntry(String entryId) async {
+    await client.from('cash_entries').delete().eq('id', entryId);
   }
 
   Future<Customer> createCustomer(Customer customer) async {

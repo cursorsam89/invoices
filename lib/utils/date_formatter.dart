@@ -1,8 +1,17 @@
+// utils/date_formatter.dart
 import 'package:intl/intl.dart';
 
 class DateFormatter {
   static String formatDisplayDate(DateTime date) {
     return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  static String formatLongDate(DateTime date) {
+    return DateFormat('dd MMMM yyyy').format(date);
+  }
+
+  static String formatTime(DateTime date) {
+    return DateFormat('h:mm a').format(date);
   }
 
   static String formatStorageDate(DateTime date) {
@@ -22,7 +31,11 @@ class DateFormatter {
     return 'Overdue: $days days';
   }
 
-  static String getStatusText(DateTime dueDate, double paidAmount, double totalAmount) {
+  static String getStatusText(
+    DateTime dueDate,
+    double paidAmount,
+    double totalAmount,
+  ) {
     if (paidAmount >= totalAmount) {
       return 'PAID';
     } else if (dueDate.isBefore(DateTime.now())) {
