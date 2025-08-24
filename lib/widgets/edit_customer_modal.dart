@@ -23,6 +23,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   bool _isLoading = false;
   late DateTime _startDate;
   late DateTime _endDate;
+  late int _repeat;
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     );
     _startDate = widget.customer.startDate;
     _endDate = widget.customer.endDate;
+    _repeat = widget.customer.repeat;
   }
 
   @override
@@ -59,6 +61,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
       if (_endDate.isBefore(_startDate)) {
         throw Exception('End date cannot be before start date');
       }
+
       final updated = widget.customer.copyWith(
         name: _nameController.text.trim(),
         amount: _amountController.text.trim().isEmpty
@@ -67,19 +70,55 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        repeat: _repeat,
         startDate: _startDate,
         endDate: _endDate,
       );
 
+      // Check if significant changes were made that require invoice regeneration
+      final needsInvoiceRegeneration =
+          updated.amount != widget.customer.amount ||
+          updated.startDate != widget.customer.startDate ||
+          updated.repeat != widget.customer.repeat;
+
+      // Update customer first (fast operation)
       final saved = await SupabaseService().updateCustomer(updated);
-      // After saving the customer, regenerate/adjust invoices to reflect new dates/amount
-      await SupabaseService().regenerateInvoicesForCustomer(saved);
 
       if (mounted) {
+        // Update UI immediately for better UX
         Provider.of<AppState>(context, listen: false).onCustomerUpdated(saved);
-        // Recompute totals since invoices may have been regenerated
-        await Provider.of<AppState>(context, listen: false).recomputeTotals();
+
+        // Close modal immediately
         Navigator.of(context).pop(saved);
+
+        // Run heavy operations in background if needed
+        if (needsInvoiceRegeneration) {
+          // Show background processing message
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   const SnackBar(
+          //     content: Text(
+          //       'Customer updated! Updating invoices in background...',
+          //     ),
+          //     backgroundColor: Colors.blue,
+          //     duration: Duration(seconds: 1),
+          //   ),
+          // );
+
+          // Run invoice regeneration in background
+          _regenerateInvoicesInBackground(saved);
+        } else {
+          // Show success message for minor changes
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Customer updated successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+
+          // Just recompute totals for minor changes
+          Provider.of<AppState>(context, listen: false).recomputeTotals();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -99,6 +138,36 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     }
   }
 
+  // Run invoice regeneration in background
+  Future<void> _regenerateInvoicesInBackground(Customer customer) async {
+    try {
+      await SupabaseService().regenerateInvoicesForCustomer(customer);
+      await Provider.of<AppState>(context, listen: false).recomputeTotals();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Customer and invoices updated successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '⚠️ Customer updated but invoice update failed: ${e.toString()}',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _selectStartDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -109,9 +178,8 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     if (picked != null) {
       setState(() {
         _startDate = picked;
-        if (_endDate.isBefore(_startDate)) {
-          _endDate = _startDate;
-        }
+        // Recalculate end date based on new start date and current repeat value
+        _endDate = _calculateEndDate();
       });
     }
   }
@@ -126,6 +194,25 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     if (picked != null) {
       setState(() {
         _endDate = picked;
+      });
+    }
+  }
+
+  // Calculate end date based on start date and repeat value
+  DateTime _calculateEndDate() {
+    return DateTime(
+      _startDate.year,
+      _startDate.month + _repeat,
+      _startDate.day,
+    );
+  }
+
+  // Update end date when repeat changes
+  void _onRepeatChanged(int? newRepeat) {
+    if (newRepeat != null) {
+      setState(() {
+        _repeat = newRepeat;
+        _endDate = _calculateEndDate();
       });
     }
   }
@@ -200,6 +287,35 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                               '${_startDate.day}/${_startDate.month}/${_startDate.year}',
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Repeat Field
+                        Row(
+                          children: [
+                            const Icon(Icons.repeat),
+                            const SizedBox(width: 8),
+                            const Text('Repeat:'),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _repeat,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: List.generate(12, (index) => index + 1)
+                                    .map(
+                                      (value) => DropdownMenuItem(
+                                        value: value,
+                                        child: Text(
+                                          '$value month${value > 1 ? 's' : ''}',
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: _onRepeatChanged,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         // End Date Field
