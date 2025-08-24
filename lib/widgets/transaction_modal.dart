@@ -334,7 +334,9 @@ class _TransactionModalState extends State<TransactionModal> {
                             ? Colors.white
                             : Colors.black,
                       ),
-                      child: Text('History (${_transactions.length})'),
+                      child: Text(
+                        'History (${_transactions.where((t) => t.isActive).length})',
+                      ),
                     ),
                   ),
                 ],
@@ -415,12 +417,16 @@ class _TransactionModalState extends State<TransactionModal> {
               ] else ...[
                 // Transaction History
                 Expanded(
-                  child: _transactions.isEmpty
+                  child: _transactions.where((t) => t.isActive).isEmpty
                       ? const Center(child: Text('No transactions yet'))
                       : ListView.builder(
-                          itemCount: _transactions.length,
+                          itemCount: _transactions
+                              .where((t) => t.isActive)
+                              .length,
                           itemBuilder: (context, index) {
-                            final transaction = _transactions[index];
+                            final transaction = _transactions
+                                .where((t) => t.isActive)
+                                .toList()[index];
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(

@@ -132,7 +132,39 @@ class CustomerCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      // amount chip removed for compact layout
+                      // Amount display
+                      if (customer.amount != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.attach_money,
+                                size: 12,
+                                color: Color(0xFF6366F1),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormatter.formatCurrency(customer.amount!),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6366F1),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (customer.description != null &&
                           customer.description!.isNotEmpty) ...[
                         const SizedBox(height: 6),

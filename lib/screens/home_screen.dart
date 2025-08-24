@@ -86,16 +86,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         SupabaseService().getAmountReceivedThisMonth(),
         SupabaseService().getAmountDue(),
         SupabaseService().getCustomers(),
+        SupabaseService().getOverdueCustomers(),
       ]);
 
       final double amountReceived = results[0] as double;
       final double amountDue = results[1] as double;
       final List<Customer> customers = results[2] as List<Customer>;
+      final List<Customer> overdueCustomers = results[3] as List<Customer>;
 
       setState(() {
         _amountReceived = amountReceived;
         _amountDue = amountDue;
         _allCustomers = customers;
+        _overdueCustomers = overdueCustomers;
         _customers = _allCustomers;
         _filterCustomers();
         _isLoading = false;
@@ -176,8 +179,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {
         _overdueCustomers = overdue;
-        _customers = _overdueCustomers;
-        _filterCustomers();
+        if (_currentFilter == CustomerFilter.overdue) {
+          _customers = _overdueCustomers;
+          _filterCustomers();
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -455,6 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     'All Customers',
                                     CustomerFilter.all,
                                     Icons.people,
+                                    _allCustomers.length,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -463,6 +469,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     'Overdue',
                                     CustomerFilter.overdue,
                                     Icons.warning,
+                                    _overdueCustomers.length,
                                   ),
                                 ),
                               ],
@@ -712,7 +719,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFilterChip(String label, CustomerFilter filter, IconData icon) {
+  Widget _buildFilterChip(
+    String label,
+    CustomerFilter filter,
+    IconData icon,
+    int count,
+  ) {
     final isSelected = _currentFilter == filter;
     return GestureDetector(
       onTap: () => _onFilterChanged(filter),
@@ -745,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(width: 8),
             Text(
-              label,
+              '$label ($count)',
               style: TextStyle(
                 color: isSelected ? Colors.white : const Color(0xFF6366F1),
                 fontWeight: FontWeight.w600,

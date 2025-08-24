@@ -134,7 +134,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 520),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -143,6 +143,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header - Fixed at top
                 Row(
                   children: [
                     Icon(
@@ -164,77 +165,92 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer Name *',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter customer name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Start Date Field
-                InkWell(
-                  onTap: _selectStartDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date',
-                      prefixIcon: Icon(Icons.calendar_today),
-                      border: OutlineInputBorder(),
+
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Customer Name *',
+                            prefixIcon: Icon(Icons.person),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter customer name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Start Date Field
+                        InkWell(
+                          onTap: _selectStartDate,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Start Date',
+                              prefixIcon: Icon(Icons.calendar_today),
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Text(
+                              '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // End Date Field
+                        InkWell(
+                          onTap: _selectEndDate,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'End Date',
+                              prefixIcon: Icon(Icons.event),
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Text(
+                              '${_endDate.day}/${_endDate.month}/${_endDate.year}',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d*'),
+                            ),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Amount (Optional)',
+                            prefixIcon: Icon(Icons.attach_money),
+                            border: OutlineInputBorder(),
+                            hintText: 'e.g., 1000',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _descriptionController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (Optional)',
+                            prefixIcon: Icon(Icons.description),
+                            border: OutlineInputBorder(),
+                            hintText: 'Enter any additional details...',
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '${_startDate.day}/${_startDate.month}/${_startDate.year}',
-                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                // End Date Field
-                InkWell(
-                  onTap: _selectEndDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'End Date',
-                      prefixIcon: Icon(Icons.event),
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(
-                      '${_endDate.day}/${_endDate.month}/${_endDate.year}',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Amount (Optional)',
-                    prefixIcon: Icon(Icons.attach_money),
-                    border: OutlineInputBorder(),
-                    hintText: 'e.g., 1000',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (Optional)',
-                    prefixIcon: Icon(Icons.description),
-                    border: OutlineInputBorder(),
-                    hintText: 'Enter any additional details...',
-                  ),
-                ),
+
+                // Buttons - Fixed at bottom
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,

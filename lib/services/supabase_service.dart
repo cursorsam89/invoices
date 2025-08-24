@@ -662,35 +662,57 @@ class SupabaseService {
         .inFilter('customer_id', customerIds)
         .lt('due_date', nowIso);
 
-    final Map<String, OverdueSummary> result = {};
+    // Group invoices by customer_id for proper calculation
+    final Map<String, List<Map<String, dynamic>>> invoicesByCustomer = {};
     for (final inv in invoicesResp as List) {
       final String cid = inv['customer_id'] as String;
-      final dynamic amountRaw = inv['amount'];
-      final dynamic paidRaw = inv['paid_amount'];
-      final double amount = amountRaw is num
-          ? amountRaw.toDouble()
-          : (amountRaw is String ? double.tryParse(amountRaw) ?? 0 : 0);
-      final double paid = paidRaw is num
-          ? paidRaw.toDouble()
-          : (paidRaw is String ? double.tryParse(paidRaw) ?? 0 : 0);
-      final double remaining = amount - paid;
-      if (remaining <= 0) continue;
-      final int days = DateTime.now()
-          .difference(DateTime.parse(inv['due_date'] as String))
-          .inDays;
-      final prev = result[cid];
-      if (prev == null) {
-        result[cid] = OverdueSummary(
-          totalOverdueAmount: remaining,
-          totalOverdueDays: days > 0 ? days : 0,
-        );
-      } else {
-        result[cid] = OverdueSummary(
-          totalOverdueAmount: prev.totalOverdueAmount + remaining,
-          totalOverdueDays: prev.totalOverdueDays + (days > 0 ? days : 0),
+      invoicesByCustomer.putIfAbsent(cid, () => []).add(inv);
+    }
+
+    final Map<String, OverdueSummary> result = {};
+
+    for (final entry in invoicesByCustomer.entries) {
+      final String customerId = entry.key;
+      final List<Map<String, dynamic>> customerInvoices = entry.value;
+
+      double totalOverdueAmount = 0.0;
+      int maxOverdueDays = 0; // Track the most recent overdue invoice's days
+
+      for (final inv in customerInvoices) {
+        final dynamic amountRaw = inv['amount'];
+        final dynamic paidRaw = inv['paid_amount'];
+        final double amount = amountRaw is num
+            ? amountRaw.toDouble()
+            : (amountRaw is String ? double.tryParse(amountRaw) ?? 0 : 0);
+        final double paid = paidRaw is num
+            ? paidRaw.toDouble()
+            : (paidRaw is String ? double.tryParse(paidRaw) ?? 0 : 0);
+        final double remaining = amount - paid;
+
+        if (remaining > 0) {
+          totalOverdueAmount += remaining;
+
+          // Calculate overdue days for this invoice
+          final int days = DateTime.now()
+              .difference(DateTime.parse(inv['due_date'] as String))
+              .inDays;
+
+          // Keep track of the maximum overdue days (most recent overdue invoice)
+          if (days > maxOverdueDays) {
+            maxOverdueDays = days;
+          }
+        }
+      }
+
+      // Only add to result if there are overdue amounts
+      if (totalOverdueAmount > 0) {
+        result[customerId] = OverdueSummary(
+          totalOverdueAmount: totalOverdueAmount,
+          totalOverdueDays: maxOverdueDays,
         );
       }
     }
+
     return result;
   }
 }
