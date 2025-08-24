@@ -169,7 +169,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -178,6 +178,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header - Fixed at top
                 Row(
                   children: [
                     Icon(
@@ -191,129 +192,163 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // Name Field
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer Name *',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter customer name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Amount Field
-                TextFormField(
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Amount (Optional)',
-                    prefixIcon: Icon(Icons.attach_money),
-                    border: OutlineInputBorder(),
-                    hintText: 'e.g., 1000',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Description Field
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (Optional)',
-                    prefixIcon: Icon(Icons.description),
-                    border: OutlineInputBorder(),
-                    hintText: 'Enter any additional details...',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Repeat Field
-                Row(
-                  children: [
-                    const Icon(Icons.repeat),
-                    const SizedBox(width: 8),
-                    const Text('Repeat:'),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: _repeat,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.person_add,
+                              color: Theme.of(context).primaryColor,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Add New Customer',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
-                        items: List.generate(12, (index) => index + 1)
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(
-                                  '$value month${value > 1 ? 's' : ''}',
+                        const SizedBox(height: 24),
+
+                        // Name Field
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Customer Name *',
+                            prefixIcon: Icon(Icons.person),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter customer name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Amount Field
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d*'),
+                            ),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Amount (Optional)',
+                            prefixIcon: Icon(Icons.attach_money),
+                            border: OutlineInputBorder(),
+                            hintText: 'e.g., 1000',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Description Field
+                        TextFormField(
+                          controller: _descriptionController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (Optional)',
+                            prefixIcon: Icon(Icons.description),
+                            border: OutlineInputBorder(),
+                            hintText: 'Enter any additional details...',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Repeat Field
+                        Row(
+                          children: [
+                            const Icon(Icons.repeat),
+                            const SizedBox(width: 8),
+                            const Text('Repeat:'),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _repeat,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
                                 ),
+                                items: List.generate(12, (index) => index + 1)
+                                    .map(
+                                      (value) => DropdownMenuItem(
+                                        value: value,
+                                        child: Text(
+                                          '$value month${value > 1 ? 's' : ''}',
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _repeat = value!;
+                                  });
+                                },
                               ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _repeat = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                // Start Date Field
-                InkWell(
-                  onTap: _selectDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date',
-                      prefixIcon: Icon(Icons.calendar_today),
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(
-                      '${_startDate.day}/${_startDate.month}/${_startDate.year}',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                        // Start Date Field
+                        InkWell(
+                          onTap: _selectDate,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Start Date',
+                              prefixIcon: Icon(Icons.calendar_today),
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Text(
+                              '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                // End Date Display
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'End Date: ${_endDate.day}/${_endDate.month}/${_endDate.year}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
+                        // End Date Display
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.event, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'End Date: ${_endDate.day}/${_endDate.month}/${_endDate.year}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+
+                // Action Buttons - Fixed at bottom
                 const SizedBox(height: 24),
-
-                // Action Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
