@@ -214,12 +214,12 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                               color: Theme.of(context).primaryColor,
                               size: 24,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Add New Customer',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
+                            //  const SizedBox(width: 8),
+                            // Text(
+                            //   'Add New Customer',
+                            //   style: Theme.of(context).textTheme.headlineSmall
+                            //       ?.copyWith(fontWeight: FontWeight.bold),
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 24),
