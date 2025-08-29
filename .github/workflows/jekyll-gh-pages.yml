@@ -1,0 +1,11 @@
+name: Deprecated - Jekyll Pages (disabled)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This workflow is deprecated. Use deploy-pages.yml instead."
+
