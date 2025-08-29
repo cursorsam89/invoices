@@ -110,7 +110,7 @@ class _CashbookScreenState extends State<CashbookScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cashbook'),
+        title: const Text('CASHBOOK'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
