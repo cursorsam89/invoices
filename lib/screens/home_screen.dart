@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'DASHBOARD',
+          'DASH-BOARD',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24),
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
