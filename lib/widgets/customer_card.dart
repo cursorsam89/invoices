@@ -99,6 +99,7 @@ class CustomerCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Row(
                         children: [
+                          // Date badge
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -130,30 +131,19 @@ class CustomerCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                      // Amount display
-                      if (customer.amount != null) ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.attach_money,
-                                size: 12,
-                                color: Color(0xFF6366F1),
+                          // Amount badge - placed next to date badge
+                          if (customer.amount != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
                                 DateFormatter.formatCurrency(customer.amount!),
                                 style: const TextStyle(
                                   fontSize: 12,
@@ -161,10 +151,10 @@ class CustomerCard extends StatelessWidget {
                                   color: Color(0xFF6366F1),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        ],
+                      ),
                       if (customer.description != null &&
                           customer.description!.isNotEmpty) ...[
                         const SizedBox(height: 6),

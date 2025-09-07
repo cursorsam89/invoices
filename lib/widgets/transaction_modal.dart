@@ -487,7 +487,17 @@ class _TransactionModalState extends State<TransactionModal> {
                         ],
                         decoration: InputDecoration(
                           labelText: 'Amount *',
-                          prefixIcon: const Icon(Icons.attach_money),
+                          prefixIcon: Container(
+                            margin: const EdgeInsets.all(12),
+                            child: const Text(
+                              '₹',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6366F1),
+                              ),
+                            ),
+                          ),
                           border: const OutlineInputBorder(),
                           hintText: 'Enter payment amount',
                         ),

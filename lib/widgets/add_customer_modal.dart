@@ -252,9 +252,19 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                               RegExp(r'^\d*\.?\d*'),
                             ),
                           ],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Amount (Optional)',
-                            prefixIcon: Icon(Icons.attach_money),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(12),
+                              child: const Text(
+                                '₹',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6366F1),
+                                ),
+                              ),
+                            ),
                             border: OutlineInputBorder(),
                             hintText: 'e.g., 1000',
                           ),

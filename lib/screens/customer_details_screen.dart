@@ -6,7 +6,6 @@ import '../models/transaction.dart';
 import '../services/supabase_service.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/transaction_modal.dart';
-import '../widgets/edit_invoice_modal.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
@@ -377,66 +376,45 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
 
   Widget _buildAddPaymentAction(Invoice invoice) {
     // Always enabled, even if fully paid, to allow topping up or correcting amounts
-    final bool disabled = false;
     return InkWell(
       onTap: () => _showTransactionModal(invoice),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Ink(
         decoration: BoxDecoration(
-          gradient: disabled
-              ? null
-              : const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          color: disabled ? Colors.grey[300] : null,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            if (!disabled)
-              BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(0.35),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
+            BoxShadow(
+              color: const Color(0xFF6366F1).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          constraints: const BoxConstraints(minWidth: 140),
-          child: Column(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: const BoxConstraints(minWidth: 100, maxWidth: 120),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add,
-                    size: 16,
-                    color: disabled ? Colors.black54 : Colors.white,
+              const Icon(Icons.add, size: 14, color: Colors.white),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  'Add Payment',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    letterSpacing: 0.1,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'add',
-                    style: TextStyle(
-                      color: disabled ? Colors.black87 : Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'payment',
-                style: TextStyle(
-                  color: disabled ? Colors.black87 : Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  letterSpacing: 0.2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

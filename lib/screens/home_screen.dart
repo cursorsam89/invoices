@@ -695,9 +695,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     VoidCallback? onTap,
   }) {
     // Fixed height for uniform card sizes
-    const double cardHeight = 140.0;
+    const double cardHeight = 100.0;
     Widget cardContent = Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -729,10 +729,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   child: Icon(icon, color: color, size: 20),
                 ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Flexible(
             child: Container(
-              constraints: const BoxConstraints(minHeight: 30, maxHeight: 40),
+              constraints: const BoxConstraints(minHeight: 24, maxHeight: 32),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return FittedBox(
@@ -772,7 +772,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: () => _onFilterChanged(filter),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        height: 48, // Fixed height for consistent touch targets
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF6366F1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -780,35 +781,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: isSelected
                 ? const Color(0xFF6366F1)
                 : const Color(0xFFE5E7EB),
-            width: 2,
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 16,
               color: isSelected ? Colors.white : const Color(0xFF6366F1),
             ),
-            const SizedBox(width: 6),
-            Flexible(
+            const SizedBox(width: 3),
+            Expanded(
               child: Text(
                 '$label ($count)',
                 style: TextStyle(
                   color: isSelected ? Colors.white : const Color(0xFF6366F1),
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: 11,
+                  height: 1.0,
                 ),
-                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
+                maxLines: 1,
               ),
             ),
           ],
