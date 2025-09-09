@@ -23,6 +23,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _searchController = TextEditingController();
   CustomerFilter _currentFilter = CustomerFilter.all;
+  bool _isSearchExpanded = false;
+  bool _isClassFilterExpanded = false;
+  String? _selectedClassFilter;
+  bool _showFloatingActionButton = true;
+  late ScrollController _scrollController;
   // Cached datasets
   List<Customer> _allCustomers = [];
   List<Customer> _overdueCustomers = [];
@@ -32,12 +37,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Customer> _filteredCustomers = [];
   bool _isLoading = true;
 
+  // List of available classes
+  final List<String> _availableClasses = [
+    'LKG',
+    'UKG',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+  ];
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()
+      ..addListener(() {
+        if (_scrollController.hasClients) {
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          final currentScroll = _scrollController.offset;
+          final isAtBottom =
+              currentScroll >= maxScroll - 150 ||
+              (maxScroll > 0 && currentScroll >= maxScroll * 0.95);
+
+          // Update FAB visibility
+          if (isAtBottom && _showFloatingActionButton) {
+            setState(() {
+              _showFloatingActionButton = false;
+            });
+          } else if (!isAtBottom && !_showFloatingActionButton) {
+            setState(() {
+              _showFloatingActionButton = true;
+            });
+          }
+        }
+      });
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -54,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -126,14 +169,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     List<Customer> filtered = _customers.where((customer) {
       bool matchesSearch = customer.name.toLowerCase().contains(searchQuery);
+      bool matchesClass =
+          _selectedClassFilter == null ||
+          customer.studentClass == _selectedClassFilter;
 
       if (_currentFilter == CustomerFilter.overdue) {
         // For overdue filter, we need to check if customer has overdue invoices
         // This is a simplified check - in a real app, you'd want to join with invoices
-        return matchesSearch;
+        return matchesSearch && matchesClass;
       }
 
-      return matchesSearch;
+      return matchesSearch && matchesClass;
     }).toList();
 
     setState(() {
@@ -143,6 +189,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onSearchChanged(String value) {
     _filterCustomers();
+  }
+
+  void _toggleSearchExpansion() {
+    setState(() {
+      _isSearchExpanded = !_isSearchExpanded;
+      if (_isSearchExpanded) {
+        // Close class filter when search opens
+        _isClassFilterExpanded = false;
+        _selectedClassFilter = null;
+      } else {
+        _searchController.clear();
+      }
+      _filterCustomers();
+    });
+  }
+
+  void _toggleClassFilterExpansion() {
+    setState(() {
+      _isClassFilterExpanded = !_isClassFilterExpanded;
+      if (_isClassFilterExpanded) {
+        // Close search when class filter opens
+        _isSearchExpanded = false;
+        _searchController.clear();
+      } else {
+        _selectedClassFilter = null;
+      }
+      _filterCustomers();
+    });
+  }
+
+  void _onClassFilterChanged(String? selectedClass) {
+    setState(() {
+      _selectedClassFilter = selectedClass;
+      _filterCustomers();
+    });
   }
 
   void _onFilterChanged(CustomerFilter filter) {
@@ -412,56 +493,233 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         // Search bar and filter cards in one horizontal row
                         Row(
                           children: [
-                            // Search bar - takes up more space but slightly less than before
-                            Expanded(
-                              flex: 2,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 2),
+                            // Expandable search bar
+                            if (_isSearchExpanded)
+                              Expanded(
+                                flex: 3,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    onChanged: _onSearchChanged,
+                                    autofocus: true,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search customers...',
+                                      hintStyle: const TextStyle(
+                                        color: Color(0xFF9CA3AF),
+                                      ),
+                                      prefixIcon: Container(
+                                        margin: const EdgeInsets.all(8),
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF6366F1,
+                                          ).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.search,
+                                          color: Color(0xFF6366F1),
+                                        ),
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Color(0xFF9CA3AF),
+                                        ),
+                                        onPressed: _toggleSearchExpansion,
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 16,
+                                          ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                                child: TextField(
-                                  controller: _searchController,
-                                  onChanged: _onSearchChanged,
-                                  decoration: InputDecoration(
-                                    hintText: 'Search customers...',
-                                    hintStyle: const TextStyle(
-                                      color: Color(0xFF9CA3AF),
-                                    ),
-                                    prefixIcon: Container(
-                                      margin: const EdgeInsets.all(8),
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF6366F1,
-                                        ).withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
+                              )
+                            else
+                              // Search icon button
+                              GestureDetector(
+                                onTap: _toggleSearchExpansion,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
                                       ),
-                                      child: const Icon(
-                                        Icons.search,
-                                        color: Color(0xFF6366F1),
-                                      ),
+                                    ],
+                                  ),
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
+                                    child: const Icon(
+                                      Icons.search,
+                                      color: Color(0xFF6366F1),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            // All filter card
+                            const SizedBox(width: 8),
+                            // Class filter icon
+                            if (_isClassFilterExpanded)
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: PopupMenuButton<String>(
+                                          initialValue: _selectedClassFilter,
+                                          onSelected: _onClassFilterChanged,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  _selectedClassFilter != null
+                                                      ? '${_selectedClassFilter!} (${_allCustomers.where((c) => c.studentClass == _selectedClassFilter).length})'
+                                                      : 'Class',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF6366F1),
+                                                  ),
+                                                ),
+                                                const Icon(
+                                                  Icons.arrow_drop_down,
+                                                  color: Color(0xFF6366F1),
+                                                  size: 16,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          itemBuilder: (BuildContext context) {
+                                            return _availableClasses.map((
+                                              String classValue,
+                                            ) {
+                                              // Calculate count of students in this class
+                                              final classCount = _allCustomers
+                                                  .where(
+                                                    (c) =>
+                                                        c.studentClass ==
+                                                        classValue,
+                                                  )
+                                                  .length;
+
+                                              return PopupMenuItem<String>(
+                                                value: classValue,
+                                                child: Text(
+                                                  '$classValue ($classCount)',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList();
+                                          },
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Color(0xFF9CA3AF),
+                                          size: 14,
+                                        ),
+                                        onPressed: _toggleClassFilterExpansion,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 20,
+                                          minHeight: 20,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              // Class filter icon button
+                              GestureDetector(
+                                onTap: _toggleClassFilterExpansion,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.school,
+                                      color: Color(0xFF6366F1),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 8),
+                            // All filter card - responsive size
                             Expanded(
-                              flex: 1,
+                              flex: _isSearchExpanded || _isClassFilterExpanded
+                                  ? 1
+                                  : 2,
                               child: _buildFilterChip(
                                 'All',
                                 CustomerFilter.all,
@@ -469,10 +727,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 _allCustomers.length,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            // Overdue filter card
+                            const SizedBox(width: 8),
+                            // Overdue filter card - responsive size
                             Expanded(
-                              flex: 1,
+                              flex: _isSearchExpanded || _isClassFilterExpanded
+                                  ? 1
+                                  : 2,
                               child: _buildFilterChip(
                                 'OD',
                                 CustomerFilter.overdue,
@@ -581,14 +841,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ],
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
+                              controller: _scrollController,
+                              padding: const EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                                bottom: 20, // Minimal space at bottom
                               ),
                               itemCount: _filteredCustomers.length,
                               itemBuilder: (context, index) {
                                 final customer = _filteredCustomers[index];
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.only(bottom: 2),
                                   child: CustomerCard(
                                     customer: customer,
                                     onEdit: () async {
@@ -660,27 +923,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6366F1).withOpacity(0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      floatingActionButton: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: Matrix4.translationValues(
+          0,
+          _showFloatingActionButton
+              ? 0
+              : 100, // Move button down when at bottom
+          0,
         ),
-        child: FloatingActionButton(
-          onPressed: _showAddCustomerModal,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6366F1).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            onPressed: _showFloatingActionButton ? _showAddCustomerModal : null,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          ),
         ),
       ),
     );
@@ -773,7 +1046,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: () => _onFilterChanged(filter),
       child: Container(
         height: 48, // Fixed height for consistent touch targets
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: _isSearchExpanded ? 6 : 12,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF6366F1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -797,17 +1073,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Icon(
               icon,
-              size: 16,
+              size: _isSearchExpanded ? 14 : 16,
               color: isSelected ? Colors.white : const Color(0xFF6366F1),
             ),
-            const SizedBox(width: 3),
-            Expanded(
+            SizedBox(width: _isSearchExpanded ? 2 : 4),
+            Flexible(
               child: Text(
                 '$label ($count)',
                 style: TextStyle(
                   color: isSelected ? Colors.white : const Color(0xFF6366F1),
                   fontWeight: FontWeight.w600,
-                  fontSize: 11,
+                  fontSize: _isSearchExpanded ? 10 : 12,
                   height: 1.0,
                 ),
                 textAlign: TextAlign.center,

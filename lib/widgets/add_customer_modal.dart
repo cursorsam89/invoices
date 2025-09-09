@@ -19,16 +19,43 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
+  late final TextEditingController _startDateController;
 
   int _repeat = 1;
   DateTime _startDate = DateTime.now();
   bool _isLoading = false;
+  String? _selectedClass;
+
+  // List of available classes
+  final List<String> _availableClasses = [
+    'LKG',
+    'UKG',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startDateController = TextEditingController(
+      text: '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+    );
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
     _descriptionController.dispose();
+    _startDateController.dispose();
     super.dispose();
   }
 
@@ -43,6 +70,8 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
     if (picked != null) {
       setState(() {
         _startDate = picked;
+        _startDateController.text =
+            '${_startDate.day}/${_startDate.month}/${_startDate.year}';
       });
     }
   }
@@ -74,6 +103,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        studentClass: _selectedClass,
         repeat: _repeat,
         startDate: _startDate,
         endDate: _endDate,
@@ -169,9 +199,12 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.95,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -184,22 +217,29 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                     Icon(
                       Icons.person_add,
                       color: Theme.of(context).primaryColor,
-                      size: 24,
+                      size: 22,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      'Add New Customer',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Text(
+                        'Add New Customer',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Scrollable content
                 Expanded(
@@ -239,7 +279,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
                         // Amount Field
                         TextFormField(
@@ -269,7 +309,34 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                             hintText: 'e.g., 1000',
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+
+                        // Class Field
+                        DropdownButtonFormField<String>(
+                          value: _selectedClass,
+                          decoration: const InputDecoration(
+                            labelText: 'Class (Optional)',
+                            prefixIcon: Icon(Icons.school),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
+                          ),
+                          hint: const Text('Select class'),
+                          items: _availableClasses.map((String classValue) {
+                            return DropdownMenuItem<String>(
+                              value: classValue,
+                              child: Text(classValue),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedClass = newValue;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
 
                         // Description Field
                         TextFormField(
@@ -282,72 +349,77 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                             hintText: 'Enter any additional details...',
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
                         // Repeat Field
-                        Row(
-                          children: [
-                            const Icon(Icons.repeat),
-                            const SizedBox(width: 8),
-                            const Text('Repeat:'),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: DropdownButtonFormField<int>(
-                                value: _repeat,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: List.generate(12, (index) => index + 1)
-                                    .map(
-                                      (value) => DropdownMenuItem(
-                                        value: value,
-                                        child: Text(
-                                          '$value month${value > 1 ? 's' : ''}',
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _repeat = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Start Date Field
-                        InkWell(
-                          onTap: _selectDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Start Date',
-                              prefixIcon: Icon(Icons.calendar_today),
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Text(
-                              '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                        DropdownButtonFormField<int>(
+                          value: _repeat,
+                          decoration: const InputDecoration(
+                            labelText: 'Repeat',
+                            prefixIcon: Icon(Icons.repeat),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
                             ),
                           ),
+                          items: List.generate(12, (index) => index + 1)
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    '$value month${value > 1 ? 's' : ''}',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _repeat = value!;
+                            });
+                          },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+
+                        // Start Date Field
+                        TextFormField(
+                          controller: _startDateController,
+                          readOnly: true,
+                          onTap: _selectDate,
+                          decoration: const InputDecoration(
+                            labelText: 'Start Date',
+                            prefixIcon: Icon(Icons.calendar_today),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
                         // End Date Display
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.event, size: 20),
+                              const Icon(
+                                Icons.event,
+                                size: 18,
+                                color: Colors.grey,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'End Date: ${_endDate.day}/${_endDate.month}/${_endDate.year}',
-                                style: Theme.of(context).textTheme.bodyMedium,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
                               ),
                             ],
                           ),
@@ -358,26 +430,38 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                 ),
 
                 // Action Buttons - Fixed at bottom
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _saveCustomer,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Save Customer'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _saveCustomer,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Save Customer'),
+                      ),
                     ),
                   ],
                 ),

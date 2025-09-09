@@ -20,10 +20,28 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _startDateController;
   bool _isLoading = false;
   late DateTime _startDate;
   late DateTime _endDate;
   late int _repeat;
+  late String? _selectedClass;
+
+  // List of available classes
+  final List<String> _availableClasses = [
+    'LKG',
+    'UKG',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+  ];
 
   @override
   void initState() {
@@ -40,6 +58,10 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     _startDate = widget.customer.startDate;
     _endDate = widget.customer.endDate;
     _repeat = widget.customer.repeat;
+    _selectedClass = widget.customer.studentClass;
+    _startDateController = TextEditingController(
+      text: '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+    );
   }
 
   @override
@@ -47,6 +69,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     _nameController.dispose();
     _amountController.dispose();
     _descriptionController.dispose();
+    _startDateController.dispose();
     super.dispose();
   }
 
@@ -70,6 +93,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        studentClass: _selectedClass,
         repeat: _repeat,
         startDate: _startDate,
         endDate: _endDate,
@@ -180,6 +204,8 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
         _startDate = picked;
         // Recalculate end date based on new start date and current repeat value
         _endDate = _calculateEndDate();
+        _startDateController.text =
+            '${_startDate.day}/${_startDate.month}/${_startDate.year}';
       });
     }
   }
@@ -221,35 +247,65 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.95,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header - Fixed at top
-                Row(
-                  children: [
-                    Icon(
-                      Icons.edit,
-                      color: Theme.of(context).primaryColor,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Edit Customer',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                // Header - More spacious
+                Container(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.edit,
+                          color: Theme.of(context).primaryColor,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Edit Customer',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey[100],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -265,6 +321,10 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                             labelText: 'Customer Name *',
                             prefixIcon: Icon(Icons.person),
                             border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -274,48 +334,91 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                           },
                         ),
                         const SizedBox(height: 16),
+
+                        // Class Field
+                        DropdownButtonFormField<String>(
+                          value: _selectedClass,
+                          decoration: const InputDecoration(
+                            labelText: 'Class (Optional)',
+                            prefixIcon: Icon(Icons.school),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
+                          ),
+                          hint: const Text('Select class'),
+                          items: [
+                            // Clear option (only show if a class is currently selected)
+                            if (_selectedClass != null)
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.clear,
+                                      size: 16,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Clear Class',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            // Class options
+                            ..._availableClasses.map((String classValue) {
+                              return DropdownMenuItem<String>(
+                                value: classValue,
+                                child: Text(classValue),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedClass = newValue;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
                         // Start Date Field
-                        InkWell(
+                        TextFormField(
+                          controller: _startDateController,
+                          readOnly: true,
                           onTap: _selectStartDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Start Date',
-                              prefixIcon: Icon(Icons.calendar_today),
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Text(
-                              '${_startDate.day}/${_startDate.month}/${_startDate.year}',
-                            ),
+                          decoration: const InputDecoration(
+                            labelText: 'Start Date',
+                            prefixIcon: Icon(Icons.calendar_today),
+                            border: OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 16),
                         // Repeat Field
-                        Row(
-                          children: [
-                            const Icon(Icons.repeat),
-                            const SizedBox(width: 8),
-                            const Text('Repeat:'),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: DropdownButtonFormField<int>(
-                                value: _repeat,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: List.generate(12, (index) => index + 1)
-                                    .map(
-                                      (value) => DropdownMenuItem(
-                                        value: value,
-                                        child: Text(
-                                          '$value month${value > 1 ? 's' : ''}',
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: _onRepeatChanged,
-                              ),
+                        DropdownButtonFormField<int>(
+                          value: _repeat,
+                          decoration: const InputDecoration(
+                            labelText: 'Repeat',
+                            prefixIcon: Icon(Icons.repeat),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
                             ),
-                          ],
+                          ),
+                          items: List.generate(12, (index) => index + 1)
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    '$value month${value > 1 ? 's' : ''}',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _onRepeatChanged,
                         ),
                         const SizedBox(height: 16),
                         // End Date Field
@@ -358,6 +461,10 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                             ),
                             border: OutlineInputBorder(),
                             hintText: 'e.g., 1000',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -369,6 +476,10 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                             prefixIcon: Icon(Icons.description),
                             border: OutlineInputBorder(),
                             hintText: 'Enter any additional details...',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -376,29 +487,57 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                   ),
                 ),
 
-                // Buttons - Fixed at bottom
+                // Buttons - More spacious
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _saveChanges,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Save Changes'),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey[400]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _saveChanges,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Save Changes',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

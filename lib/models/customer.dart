@@ -4,6 +4,7 @@ class Customer {
   final String name;
   final double? amount;
   final String? description;
+  final String? studentClass;
   final int repeat;
   final DateTime startDate;
   final DateTime endDate;
@@ -15,6 +16,7 @@ class Customer {
     required this.name,
     this.amount,
     this.description,
+    this.studentClass,
     required this.repeat,
     required this.startDate,
     required this.endDate,
@@ -28,6 +30,7 @@ class Customer {
       name: json['name'],
       amount: json['amount']?.toDouble(),
       description: json['description'],
+      studentClass: json['student_class'],
       repeat: json['repeat'],
       startDate: DateTime.parse(json['start_date']),
       endDate: DateTime.parse(json['end_date']),
@@ -42,6 +45,7 @@ class Customer {
       'name': name,
       'amount': amount,
       'description': description,
+      'student_class': studentClass,
       'repeat': repeat,
       'start_date': startDate.toIso8601String(),
       'end_date': endDate.toIso8601String(),
@@ -55,6 +59,7 @@ class Customer {
     String? name,
     double? amount,
     String? description,
+    String? studentClass,
     int? repeat,
     DateTime? startDate,
     DateTime? endDate,
@@ -66,6 +71,7 @@ class Customer {
       name: name ?? this.name,
       amount: amount ?? this.amount,
       description: description ?? this.description,
+      studentClass: studentClass, // Allow null values to be set
       repeat: repeat ?? this.repeat,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,

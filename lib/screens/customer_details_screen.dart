@@ -396,28 +396,19 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
           ],
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          constraints: const BoxConstraints(minWidth: 100, maxWidth: 120),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add, size: 14, color: Colors.white),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  'Add Payment',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    letterSpacing: 0.1,
-                  ),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          constraints: const BoxConstraints(minWidth: 80, maxWidth: 100),
+          child: Center(
+            child: Text(
+              'ADD',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: 0.5,
               ),
-            ],
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
