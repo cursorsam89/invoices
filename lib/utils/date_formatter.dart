@@ -45,4 +45,12 @@ class DateFormatter {
       return 'UPCOMING';
     }
   }
+
+  static String formatMonthYear(DateTime date) {
+    return DateFormat('MMMM yyyy').format(date);
+  }
+
+  static String formatDate(DateTime date) {
+    return DateFormat('dd MMM yyyy').format(date);
+  }
 }

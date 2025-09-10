@@ -7,6 +7,7 @@ import '../models/transaction.dart';
 import '../models/overdue_summary.dart';
 import '../models/book.dart';
 import '../models/cash_entry.dart';
+import '../models/transaction_history.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -188,6 +189,7 @@ class SupabaseService {
       'name': customer.name,
       if (customer.amount != null) 'amount': customer.amount,
       if (customer.description != null) 'description': customer.description,
+      if (customer.studentClass != null) 'student_class': customer.studentClass,
       'repeat': customer.repeat,
       'start_date': customer.startDate.toIso8601String(),
       'end_date': customer.endDate.toIso8601String(),
@@ -806,5 +808,75 @@ class SupabaseService {
     }
 
     return result;
+  }
+
+  /// Get monthly transaction history for the current month
+  /// Returns transactions with customer names, ordered by latest first
+  Future<List<TransactionHistory>> getMonthlyTransactionHistory() async {
+    final now = DateTime.now();
+    final String startDate =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
+    final DateTime nextMonthBase = now.month == 12
+        ? DateTime(now.year + 1, 1, 1)
+        : DateTime(now.year, now.month + 1, 1);
+    final String nextMonthDate =
+        '${nextMonthBase.year.toString().padLeft(4, '0')}-${nextMonthBase.month.toString().padLeft(2, '0')}-${nextMonthBase.day.toString().padLeft(2, '0')}';
+
+    // Get user's customer IDs
+    final customerIdsResp = await client
+        .from('customers')
+        .select('id')
+        .eq('user_id', currentUser!.id);
+    final customerIds = (customerIdsResp as List)
+        .map((e) => e['id'] as String)
+        .toList();
+    if (customerIds.isEmpty) return [];
+
+    // Get user's invoice IDs
+    final invoiceIdsResp = await client
+        .from('invoices')
+        .select('id, customer_id')
+        .inFilter('customer_id', customerIds);
+    final invoiceIds = (invoiceIdsResp as List)
+        .map((e) => e['id'] as String)
+        .toList();
+    if (invoiceIds.isEmpty) return [];
+
+    // Get transactions with customer names for current month
+    final response = await client
+        .from('transactions')
+        .select('''
+          id,
+          invoice_id,
+          amount,
+          payment_date,
+          created_at,
+          invoices!inner(
+            customer_id,
+            customers!inner(
+              name
+            )
+          )
+        ''')
+        .inFilter('invoice_id', invoiceIds)
+        .eq('status', 'active')
+        .gte('payment_date', startDate)
+        .lt('payment_date', nextMonthDate)
+        .order('payment_date', ascending: false);
+
+    return (response as List).map((json) {
+      final invoiceData = json['invoices'] as Map<String, dynamic>;
+      final customerData = invoiceData['customers'] as Map<String, dynamic>;
+
+      return TransactionHistory(
+        id: json['id'],
+        customerId: invoiceData['customer_id'],
+        customerName: customerData['name'],
+        invoiceId: json['invoice_id'],
+        amount: json['amount'].toDouble(),
+        paymentDate: DateTime.parse(json['payment_date']),
+        createdAt: DateTime.parse(json['created_at']),
+      );
+    }).toList();
   }
 }

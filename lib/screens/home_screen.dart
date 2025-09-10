@@ -8,6 +8,7 @@ import '../widgets/add_customer_modal.dart';
 import '../widgets/edit_customer_modal.dart';
 import 'customer_details_screen.dart';
 import 'monthly_collection_history_screen.dart';
+import 'transaction_history_screen.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
@@ -129,8 +130,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         SupabaseService().getOverdueCustomers(),
       ]);
 
-      final customers = results[0] as List<Customer>;
-      final overdueCustomers = results[1] as List<Customer>;
+      final customers = results[0];
+      final overdueCustomers = results[1];
 
       setState(() {
         _allCustomers = customers;
@@ -182,9 +183,65 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return matchesSearch && matchesClass;
     }).toList();
 
+    // Sort customers by class and then by name
+    filtered.sort((a, b) {
+      // First, sort by class (null classes go to bottom)
+      if (a.studentClass == null && b.studentClass == null) {
+        // Both have no class, sort by name
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      } else if (a.studentClass == null) {
+        // a has no class, b has class - a goes to bottom
+        return 1;
+      } else if (b.studentClass == null) {
+        // b has no class, a has class - b goes to bottom
+        return -1;
+      } else {
+        // Both have classes, sort by class first
+        int classComparison = _compareClasses(a.studentClass!, b.studentClass!);
+        if (classComparison != 0) {
+          return classComparison;
+        }
+        // Same class, sort by name
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      }
+    });
+
     setState(() {
       _filteredCustomers = filtered;
     });
+  }
+
+  int _compareClasses(String classA, String classB) {
+    // Define class order
+    const classOrder = [
+      'LKG',
+      'UKG',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      '10',
+    ];
+
+    int indexA = classOrder.indexOf(classA);
+    int indexB = classOrder.indexOf(classB);
+
+    // If both classes are in the predefined order, compare by index
+    if (indexA != -1 && indexB != -1) {
+      return indexA.compareTo(indexB);
+    }
+
+    // If only one is in the predefined order, it comes first
+    if (indexA != -1) return -1;
+    if (indexB != -1) return 1;
+
+    // If neither is in the predefined order, compare alphabetically
+    return classA.compareTo(classB);
   }
 
   void _onSearchChanged(String value) {
@@ -469,6 +526,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       const Color(0xFF8B5CF6),
                                       const Color(0xFFEDE9FE),
                                       assetIconPath: 'assets/wallet.png',
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const TransactionHistoryScreen(),
+                                          ),
+                                        );
+                                      },
                                     ),
                               ),
                             ),
@@ -840,84 +905,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ],
                             )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.only(
-                                left: 20,
-                                right: 20,
-                                bottom: 20, // Minimal space at bottom
-                              ),
-                              itemCount: _filteredCustomers.length,
-                              itemBuilder: (context, index) {
-                                final customer = _filteredCustomers[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: CustomerCard(
-                                    customer: customer,
-                                    onEdit: () async {
-                                      final updated =
-                                          await showDialog<Customer>(
-                                            context: context,
-                                            builder: (context) =>
-                                                EditCustomerModal(
-                                                  customer: customer,
-                                                ),
-                                          );
-                                      if (updated != null && mounted) {
-                                        setState(() {
-                                          _allCustomers = [
-                                            updated,
-                                            ..._allCustomers.where(
-                                              (c) => c.id != updated.id,
-                                            ),
-                                          ];
-                                          if (_currentFilter ==
-                                              CustomerFilter.all) {
-                                            _customers = _allCustomers;
-                                          }
-                                          _filterCustomers();
-                                        });
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: const [
-                                                Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.white,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Customer updated successfully!',
-                                                ),
-                                              ],
-                                            ),
-                                            backgroundColor: Colors.green,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    onDelete: () => _deleteCustomer(customer),
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              CustomerDetailsScreen(
-                                                customer: customer,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
+                          : _buildGroupedCustomerList(),
                     ),
                   ),
                 ],
@@ -1033,6 +1021,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     return cardContent;
+  }
+
+  Widget _buildGroupedCustomerList() {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+      itemCount: _filteredCustomers.length,
+      itemBuilder: (context, index) {
+        final customer = _filteredCustomers[index];
+        return _buildCustomerCard(customer);
+      },
+    );
+  }
+
+  Widget _buildCustomerCard(Customer customer) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: CustomerCard(
+        customer: customer,
+        onEdit: () async {
+          final updated = await showDialog<Customer>(
+            context: context,
+            builder: (context) => EditCustomerModal(customer: customer),
+          );
+          if (updated != null && mounted) {
+            setState(() {
+              _allCustomers = [
+                updated,
+                ..._allCustomers.where((c) => c.id != updated.id),
+              ];
+              if (_currentFilter == CustomerFilter.all) {
+                _customers = _allCustomers;
+              }
+              _filterCustomers();
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: const [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Customer updated successfully!'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        },
+        onDelete: () => _deleteCustomer(customer),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => CustomerDetailsScreen(customer: customer),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildFilterChip(

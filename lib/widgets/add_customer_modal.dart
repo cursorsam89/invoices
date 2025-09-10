@@ -120,6 +120,8 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
             (customer.amount?.toString() ?? 'null') +
             ', description: ' +
             (customer.description ?? 'null') +
+            ', studentClass: ' +
+            (customer.studentClass ?? 'null') +
             ', repeat: ' +
             customer.repeat.toString() +
             ', start_date: ' +
