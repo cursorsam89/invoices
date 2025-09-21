@@ -136,7 +136,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         _allCustomers = customers;
         _overdueCustomers = overdueCustomers;
-        _customers = _allCustomers;
+        // Fix: maintain correct filter after refresh
+        if (_currentFilter == CustomerFilter.overdue) {
+          _customers = _overdueCustomers;
+        } else {
+          _customers = _allCustomers;
+        }
         _filterCustomers();
         _isLoading = false;
       });
@@ -151,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Error loading data: ${e.toString()}')),
+                Expanded(child: Text('Error loading data:  e.toString()}')),
               ],
             ),
             backgroundColor: Colors.red,

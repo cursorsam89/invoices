@@ -41,6 +41,18 @@ class _CashEntryDialogState extends State<CashEntryDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
+      // Combine picked date with current time for entryDate
+      final now = DateTime.now();
+      final entryDate = DateTime(
+        _date.year,
+        _date.month,
+        _date.day,
+        now.hour,
+        now.minute,
+        now.second,
+        now.millisecond,
+        now.microsecond,
+      );
       final created = await SupabaseService().createEntry(
         CashEntry(
           id: '',
@@ -48,8 +60,8 @@ class _CashEntryDialogState extends State<CashEntryDialog> {
           type: widget.type,
           amount: double.parse(_amount.text.trim()),
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          entryDate: _date,
-          createdAt: DateTime.now(),
+          entryDate: entryDate,
+          createdAt: now,
         ),
       );
       if (mounted) Navigator.of(context).pop(created);

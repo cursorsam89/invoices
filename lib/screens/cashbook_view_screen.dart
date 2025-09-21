@@ -306,7 +306,7 @@ class _CashbookViewScreenState extends State<CashbookViewScreen> {
                                           ),
                                         ),
                                         title: Text(
-                                          DateFormatter.formatTime(e.createdAt),
+                                          DateFormatter.formatTime(e.entryDate),
                                           style: const TextStyle(
                                             color: Color(0xFF7C3AED),
                                             fontWeight: FontWeight.w600,
